@@ -6,8 +6,8 @@ This repository contains a small synthetic intravital imaging analysis project.
 
 The project has two goals:
 
-1. to implement a reproducible and deterministic cell-migration analysis workflow, and
-2. to demonstrate a controlled AI-assisted coding workflow.
+1. implement a reproducible and deterministic cell-migration analysis workflow, and
+2. demonstrate a controlled AI-assisted coding workflow.
 
 The authoritative scientific specification is defined in:
 
@@ -58,7 +58,7 @@ The generated results must not be described as experimental biological evidence.
 
 ---
 
-## Fixed Experimental Parameters
+## Fixed Simulation Parameters
 
 Unless explicitly changed by the researcher, use:
 
@@ -75,99 +75,21 @@ random_seed             = 42
 arrest_threshold_um_min = 2.0
 ```
 
-Do not change these values simply to improve an output, test result, visualization, or apparent group difference.
+Do not change these values simply to improve an output, test result, or visualization.
 
 ---
 
-## Synthetic Movement Rules
+## Unresolved Scientific Parameter
 
-The synthetic movement model is defined by the researcher and must not be modified without explicit approval.
-
-### Initial Cell Positions
-
-Initial positions are sampled independently for each cell from:
+The following parameter has intentionally not yet been assigned a numerical value:
 
 ```text
-x_initial ~ Uniform(0, 200 µm)
-y_initial ~ Uniform(0, 200 µm)
+injury directional-bias magnitude
 ```
 
-The same initialization rule must be used for both the control and injury conditions.
+Do not select a value for this parameter without explicit researcher approval.
 
-Do not introduce different starting-position distributions between conditions.
-
-### Random Movement
-
-At each frame transition, random displacement is sampled independently along the x and y axes:
-
-```text
-dx_random ~ Normal(0, 3 µm)
-dy_random ~ Normal(0, 3 µm)
-```
-
-Random-number generation must be reproducible using:
-
-```text
-random_seed = 42
-```
-
-### Control Condition
-
-Control cells use only the random displacement:
-
-```text
-dx = dx_random
-dy = dy_random
-```
-
-Do not introduce a directional bias into the control condition.
-
-### Injury Condition
-
-Injury-condition cells receive a constant directional drift toward the simulated sinusoid in addition to the random x displacement:
-
-```text
-dx_bias = 0.8 × sign(100 - x)
-
-dx = dx_random + dx_bias
-dy = dy_random
-```
-
-The directional bias magnitude is:
-
-```text
-0.8 µm/frame
-```
-
-The bias direction is determined from the current x position:
-
-```text
-x < 100 µm
-→ positive x-direction bias
-
-x > 100 µm
-→ negative x-direction bias
-
-x = 100 µm
-→ zero directional bias
-```
-
-The bias is a constant per-step drift and is not distance-dependent or speed-scaled.
-
-Do not change the bias magnitude or functional form without explicit researcher approval.
-
-### Boundary Handling
-
-The simulated field is bounded by:
-
-```text
-0 ≤ x ≤ 200 µm
-0 ≤ y ≤ 200 µm
-```
-
-Reflective boundary handling must be used when a simulated step moves a cell outside the field.
-
-Do not replace reflective boundaries with clipping, track termination, wrapping, or another boundary rule unless explicitly approved.
+It is acceptable—and expected—to identify this as an unresolved requirement before implementation.
 
 ---
 
@@ -208,22 +130,6 @@ Do not add any of the following unless explicitly requested:
 - unnecessary infrastructure.
 
 Keep the initial implementation intentionally small.
-
----
-
-## Synthetic TIFF Scope
-
-The project is expected eventually to generate:
-
-```text
-data/synthetic_movie.tif
-```
-
-However, detailed TIFF-rendering parameters such as cell appearance, intensity, point-spread representation, background noise, and image noise model have not yet been scientifically specified.
-
-Do not invent these parameters during the initial tracking-data implementation.
-
-The first implementation stage should focus on synthetic coordinate-track generation unless explicitly instructed otherwise.
 
 ---
 
@@ -305,42 +211,26 @@ Prefer:
 - explicit parameters,
 - type hints where useful,
 - deterministic behavior,
-- reproducible random-number generation,
 - simple control flow,
+- reproducible random-number generation,
 - separation of simulation and analysis logic, and
 - code that can be tested independently.
 
-Avoid:
-
-- unnecessary abstractions,
-- premature frameworks,
-- hidden scientific assumptions, and
-- overly complex architecture for this mini-project.
+Avoid unnecessary abstractions and frameworks.
 
 ---
 
 ## Testing Requirements
 
-Scientific calculations and simulation rules should be independently testable.
+Scientific calculations should be independently testable.
 
-When implementing or modifying scientific logic:
+When implementing or modifying a metric:
 
 1. identify relevant edge cases,
-2. construct small test cases with manually verifiable expected values where possible,
+2. construct small test cases with manually verifiable expected values,
 3. implement or update the tests,
 4. run the relevant tests, and
 5. report the result.
-
-Tests for the synthetic movement model should verify, where appropriate:
-
-- reproducibility with random seed `42`,
-- the expected number of tracks and observations,
-- valid coordinate boundaries,
-- identical initialization rules across conditions,
-- absence of directional bias in control cells,
-- correct direction of the injury bias,
-- zero injury bias at `x = 100 µm`, and
-- reflective boundary behavior.
 
 Do not modify a scientific definition merely to make a test pass.
 
@@ -350,7 +240,7 @@ If a test reveals a conflict between the implementation and `PROJECT_SPEC.md`, r
 
 ## Change Discipline
 
-Before changing an existing scientific calculation or simulation rule:
+Before changing an existing scientific calculation:
 
 1. describe the proposed change,
 2. explain why it is needed,
@@ -371,38 +261,25 @@ Before making substantial changes:
 - keep modifications focused on the requested task, and
 - avoid unrelated cleanup.
 
-After implementation:
+After implementation, summarize which files were changed and why.
 
-- summarize which files were changed,
-- explain why they were changed, and
-- report the tests that were run.
-
-Do not:
-
-- rewrite Git history,
-- force-push,
-- delete branches, or
-- modify Git configuration
-
-unless explicitly requested.
+Do not rewrite Git history, force-push, delete branches, or modify Git configuration unless explicitly requested.
 
 ---
 
 ## Current Development Stage
 
-The project has completed the initial scientific specification stage.
+The project is currently in the specification stage.
 
-The next development step is planning the implementation of synthetic tracking-data generation.
+Do not implement the synthetic-data generator or analysis pipeline yet.
 
-For the next Claude Code interaction:
+For the first Claude Code review:
 
 1. read `CLAUDE.md`,
 2. read `PROJECT_SPEC.md`,
-3. inspect the existing repository,
-4. prepare a minimal implementation plan for synthetic tracking-data generation,
-5. identify any remaining ambiguity that would block implementation, and
-6. do not modify files until explicitly instructed.
+3. inspect the repository structure,
+4. summarize your understanding of the project,
+5. identify unresolved parameters or inconsistencies, and
+6. do not modify files.
 
-The initial implementation should focus on generating deterministic and reproducible synthetic coordinate tracks.
-
-Do not implement the TIFF-generation stage yet.
+The first review should focus on understanding the specification rather than proposing implementation details.

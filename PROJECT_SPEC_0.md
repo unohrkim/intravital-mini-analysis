@@ -12,6 +12,7 @@ The project has two complementary goals:
 The scientific definitions and analysis rules are defined by the researcher. Claude Code may assist with implementation, testing, debugging, and code review, but it should not independently redefine the scientific analysis.
 
 
+
 ## Scientific Question
 
 The project addresses the following synthetic research question:
@@ -48,7 +49,6 @@ The fixed parameters are:
 These values should remain fixed unless they are deliberately revised by the researcher.
 
 
-
 ## Synthetic Cell Behavior
 
 ### Control Condition
@@ -73,79 +73,9 @@ random movement
 directional bias toward x = 100 µm
 ```
 
-The directional bias is defined explicitly in the `Synthetic Movement Model` below.
+The magnitude of this directional bias has not yet been fixed numerically.
 
-
-
-## Synthetic Movement Model
-
-### Initial Cell Positions
-
-Initial positions are sampled independently for each cell from a uniform distribution across the simulated field:
-
-```text
-x_initial ~ Uniform(0, 200 µm)
-y_initial ~ Uniform(0, 200 µm)
-```
-
-The same initialization rule is used for both the control and injury conditions.
-
-This ensures that the conditions do not differ systematically in their starting spatial distributions.
-
-### Random Movement
-
-At each frame transition, random displacement is generated independently for the x and y directions:
-
-```text
-dx_random ~ Normal(0, 3 µm)
-dy_random ~ Normal(0, 3 µm)
-```
-
-For control cells:
-
-```text
-dx = dx_random
-dy = dy_random
-```
-
-For injury-condition cells, a constant directional drift toward the simulated sinusoid is added to the x component:
-
-```text
-dx_bias = 0.8 × sign(100 - x)
-```
-
-and therefore:
-
-```text
-dx = dx_random + dx_bias
-dy = dy_random
-```
-
-The directional bias has a magnitude of `0.8 µm/frame`.
-
-The `0.8 µm/frame` directional bias is deliberately smaller than the `3 µm` standard deviation of the random displacement applied independently along each axis. This allows injury cells to retain stochastic trajectories while exhibiting a weak average tendency toward the sinusoid.
-
-If a cell is located exactly at:
-
-```text
-x = 100 µm
-```
-
-the directional bias is zero.
-
-### Boundary Handling
-
-The simulated field is bounded by:
-
-```text
-0 ≤ x ≤ 200 µm
-0 ≤ y ≤ 200 µm
-```
-
-Reflective boundary handling will be used when a simulated step would move a cell outside the field.
-
-This keeps all simulated positions within the imaging field without terminating tracks or permanently clipping coordinates at the boundary.
-
+It must be explicitly defined by the researcher before implementation and must not be chosen silently by the coding assistant.
 
 
 ## Simulated Sinusoid
@@ -165,7 +95,6 @@ distance_to_sinusoid = |x - 100|
 ```
 
 This simplified geometry allows the spatial calculation to be inspected and validated directly.
-
 
 
 ## Tracking Data Structure
@@ -195,7 +124,6 @@ C01,control,2,2,32.7,51.0
 Each row represents one cell position at one time point.
 
 
-
 ## Deterministic Analysis Metrics
 
 All primary scientific metrics must be calculated using deterministic Python functions.
@@ -216,7 +144,6 @@ Unit:
 ```text
 µm
 ```
-
 
 
 ### Step Speed
@@ -356,8 +283,6 @@ The coordinate table in `tracks.csv` will represent the ground-truth tracks.
 
 The initial project will not attempt to recover tracks from the TIFF movie through segmentation or automated tracking.
 
-Detailed rendering parameters for `synthetic_movie.tif` will be specified separately before TIFF generation is implemented.
-
 
 ## Initial Scope
 
@@ -410,7 +335,6 @@ The coding assistant may help with:
 
 The coding assistant must not silently modify scientific definitions.
 
-
 ## Design Principle
 
 The intended workflow is:
@@ -432,3 +356,17 @@ Interpretation
 ```
 
 The LLM is therefore used as a coding and review assistant rather than as the scientific analysis engine.
+
+
+## Open Design Decision
+
+One simulation parameter remains intentionally unresolved:
+
+```text
+Magnitude of the directional bias
+for injury-condition cells
+```
+
+This value must be selected explicitly before the synthetic data generator is implemented.
+
+The coding assistant may identify this as an unresolved design parameter but should not choose a value without researcher approval.
