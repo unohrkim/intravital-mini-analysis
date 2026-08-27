@@ -152,6 +152,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pillow" },
     { name = "scipy" },
     { name = "tifffile" },
 ]
@@ -166,6 +167,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "numpy", specifier = ">=2.5.2" },
     { name = "pandas", specifier = ">=3.0.5" },
+    { name = "pillow", specifier = ">=12.3.0" },
     { name = "scipy", specifier = ">=1.18.1" },
     { name = "tifffile", specifier = ">=2026.8.16" },
 ]
