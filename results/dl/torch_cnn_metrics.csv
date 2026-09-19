@@ -1,0 +1,2 @@
+split,n_samples,n_positive,n_negative,accuracy,precision,recall,f1,roc_auc,random_state
+val,600,300,300,0.755,0.7191977077363897,0.8366666666666667,0.773497688751926,0.8364222222222223,2030
