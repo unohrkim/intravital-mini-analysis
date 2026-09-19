@@ -1,178 +1,115 @@
 # Intravital Mini Analysis — Project Specification
 
-## Project Purpose
-
-This project implements a small, reproducible analysis workflow using synthetic intravital microscopy-like cell tracking data.
-
-The project has two complementary goals:
-
-1. to practice deterministic analysis of cell migration and spatial behavior, and
-2. to demonstrate a controlled AI-assisted coding workflow using Claude Code.
-
-The scientific definitions and analysis rules are defined by the researcher. Claude Code may assist with implementation, testing, debugging, and code review, but it should not independently redefine the scientific analysis.
-
-
-## Scientific Question
+## 1. Scientific Question
 
 The project addresses the following synthetic research question:
 
 > Do cells in an injury condition show stronger migration toward a simulated sinusoid than cells in a control condition?
 
-This is a synthetic exercise rather than a biological experiment.
-
-The expected directional effect is deliberately introduced into the simulated injury condition so that the analysis pipeline can be tested against known ground truth.
+This project uses synthetic data with a deliberately encoded directional migration signal.
 
 
-## Experimental Design
-
-The initial simulation contains two conditions:
-
-- `control`
-- `injury`
-
-The fixed parameters are:
+## 2. Core Experimental Parameters
 
 | Parameter | Value |
-| --- | --- |
-| Conditions | Control and Injury |
+|---|---:|
+| Conditions | `control`, `injury` |
 | Cells per condition | 15 |
 | Total cells | 30 |
 | Frames per cell | 30 |
-| Frame interval | 1 minute |
-| Field size | 200 × 200 µm |
+| Frame interval | 1 min |
+| Field width | 200 µm |
+| Field height | 200 µm |
 | Spatial scale | 1 pixel = 1 µm |
-| Simulated sinusoid | Vertical line at x = 100 µm |
+| Simulated sinusoid | vertical line at `x = 100 µm` |
 | Random seed | 42 |
 | Arrest threshold | 2.0 µm/min |
 
-These values should remain fixed unless they are deliberately revised by the researcher.
+These values are fixed for the original analysis unless a new experiment is explicitly defined.
 
 
+## 3. Synthetic Movement Model
 
-## Synthetic Cell Behavior
+### 3.1 Initial positions
 
-### Control Condition
-
-Control cells will undergo two-dimensional random movement without an intentionally introduced directional preference toward the sinusoid.
-
-Conceptually:
-
-```text
-random movement
-```
-
-### Injury Condition
-
-Injury cells will undergo similar random movement but will also receive a weak directional bias toward the simulated sinusoid.
-
-Conceptually:
-
-```text
-random movement
-        +
-directional bias toward x = 100 µm
-```
-
-The directional bias is defined explicitly in the `Synthetic Movement Model` below.
-
-
-
-## Synthetic Movement Model
-
-### Initial Cell Positions
-
-Initial positions are sampled independently for each cell from a uniform distribution across the simulated field:
+For each cell:
 
 ```text
 x_initial ~ Uniform(0, 200 µm)
 y_initial ~ Uniform(0, 200 µm)
 ```
 
-The same initialization rule is used for both the control and injury conditions.
+The same initialization rule is used for both conditions.
 
-This ensures that the conditions do not differ systematically in their starting spatial distributions.
+### 3.2 Random movement
 
-### Random Movement
-
-At each frame transition, random displacement is generated independently for the x and y directions:
+At each frame transition:
 
 ```text
 dx_random ~ Normal(0, 3 µm)
 dy_random ~ Normal(0, 3 µm)
 ```
 
-For control cells:
+### 3.3 Control condition
 
 ```text
 dx = dx_random
 dy = dy_random
 ```
 
-For injury-condition cells, a constant directional drift toward the simulated sinusoid is added to the x component:
+No directional bias is added.
+
+### 3.4 Injury condition
+
+A constant directional x-axis bias toward the simulated sinusoid is added:
 
 ```text
 dx_bias = 0.8 × sign(100 - x)
-```
 
-and therefore:
-
-```text
 dx = dx_random + dx_bias
 dy = dy_random
 ```
 
-The directional bias has a magnitude of `0.8 µm/frame`.
-
-The `0.8 µm/frame` directional bias is deliberately smaller than the `3 µm` standard deviation of the random displacement applied independently along each axis. This allows injury cells to retain stochastic trajectories while exhibiting a weak average tendency toward the sinusoid.
-
-If a cell is located exactly at:
+Bias behavior:
 
 ```text
-x = 100 µm
+x < 100 µm  → +0.8 µm/frame
+x > 100 µm  → -0.8 µm/frame
+x = 100 µm  →  0.0 µm/frame
 ```
 
-the directional bias is zero.
+The bias is not distance-dependent or speed-scaled.
 
-### Boundary Handling
+### 3.5 Boundary handling
 
-The simulated field is bounded by:
+The valid field is:
 
 ```text
 0 ≤ x ≤ 200 µm
 0 ≤ y ≤ 200 µm
 ```
 
-Reflective boundary handling will be used when a simulated step would move a cell outside the field.
-
-This keeps all simulated positions within the imaging field without terminating tracks or permanently clipping coordinates at the boundary.
+Reflective boundary handling is used whenever a proposed step leaves the field.
 
 
+## 4. Simulated Sinusoid
 
-## Simulated Sinusoid
-
-The initial sinusoid geometry is intentionally simple.
-
-It is represented by the vertical line:
+The simulated sinusoid is represented as:
 
 ```text
 x = 100 µm
 ```
 
-For a cell at coordinate `(x, y)`, distance to the sinusoid is therefore:
+For a position `(x, y)`:
 
 ```text
 distance_to_sinusoid = |x - 100|
 ```
 
-This simplified geometry allows the spatial calculation to be inspected and validated directly.
 
+## 5. Ground-Truth Tracking Data
 
-
-## Tracking Data Structure
-
-The synthetic tracking data will use a tidy tabular structure.
-
-Expected columns:
+The coordinate table uses the following columns:
 
 ```text
 track_id
@@ -183,252 +120,385 @@ x_um
 y_um
 ```
 
-Example:
+The primary coordinate file is:
 
 ```text
-track_id,condition,frame,time_min,x_um,y_um
-C01,control,0,0,32.1,48.5
-C01,control,1,1,33.0,49.2
-C01,control,2,2,32.7,51.0
+data/tracks.csv
 ```
 
 Each row represents one cell position at one time point.
 
 
+## 6. Deterministic Migration Metrics
 
-## Deterministic Analysis Metrics
+All metrics are calculated deterministically from the coordinate table.
 
-All primary scientific metrics must be calculated using deterministic Python functions.
-
-No LLM call should be involved in calculating these values.
-
-### Step Distance
-
-For consecutive positions:
+### 6.1 Step distance
 
 ```text
 step_distance =
 sqrt((x[t+1] - x[t])² + (y[t+1] - y[t])²)
 ```
 
-Unit:
+Unit: `µm`
+
+### 6.2 Step speed
 
 ```text
-µm
+step_speed = step_distance / frame_interval
 ```
 
+Unit: `µm/min`
 
-
-### Step Speed
+### 6.3 Mean speed
 
 ```text
-step_speed =
-step_distance / frame_interval
+mean_speed = mean(valid step speeds within a track)
 ```
 
-Because the frame interval is 1 minute, the resulting unit is:
-
-```text
-µm/min
-```
-
-
-### Mean Speed
-
-Mean speed is the arithmetic mean of valid step speeds within a track.
-
-
-### Path Length
-
-Path length is the sum of consecutive step distances:
+### 6.4 Path length
 
 ```text
 path_length = Σ step_distance
 ```
 
-
-### Displacement
-
-Displacement is the Euclidean distance between the first and final cell positions:
+### 6.5 Displacement
 
 ```text
 displacement =
 sqrt((x_final - x_initial)² + (y_final - y_initial)²)
 ```
 
-
-### Persistence
-
-Persistence is defined as:
+### 6.6 Persistence
 
 ```text
 persistence = displacement / path_length
 ```
 
-A value closer to 1 represents a more direct trajectory.
+If `path_length = 0`, the implementation must handle the case explicitly.
 
-A lower value represents a more wandering trajectory.
+### 6.7 Arrest coefficient
 
-If path length is zero, the implementation must handle the case explicitly rather than performing an undefined division.
-
-
-### Arrest Coefficient
-
-For this synthetic project, an interval is defined as arrested when:
+An interval is classified as arrested when:
 
 ```text
 step_speed < 2.0 µm/min
 ```
 
-The arrest coefficient is:
+Then:
 
 ```text
-number of arrested intervals
-────────────────────────────
-number of valid intervals
+arrest_coefficient =
+number of arrested intervals / number of valid intervals
 ```
 
-The `2.0 µm/min` threshold is a project-specific analysis parameter.
-
-It should not be interpreted as a universally validated biological threshold.
-
-
-### Distance to Sinusoid
-
-For every cell position:
+### 6.8 Distance to sinusoid
 
 ```text
 distance_to_sinusoid = |x - 100|
 ```
 
-Unit:
+Unit: `µm`
 
-```text
-µm
-```
-
-
-### Approach Distance
-
-Net approach toward the sinusoid is defined as:
+### 6.9 Approach distance
 
 ```text
 approach_distance =
-initial_distance_to_sinusoid
--
-final_distance_to_sinusoid
+initial_distance_to_sinusoid - final_distance_to_sinusoid
 ```
 
 Interpretation:
 
 ```text
-positive
-→ net movement toward the sinusoid
-
-zero
-→ no net change
-
-negative
-→ net movement away from the sinusoid
+positive → net movement toward sinusoid
+zero     → no net change
+negative → net movement away from sinusoid
 ```
 
-Approach distance will be the primary spatial metric used to compare the control and injury conditions.
+`approach_distance` is the primary spatial metric for the original condition-level comparison.
 
 
-## Planned Outputs
+## 7. Classical Statistical Analysis Specification
 
-The initial workflow is expected to generate:
+Primary comparison:
 
 ```text
-data/
-├── tracks.csv
-└── synthetic_movie.tif
+injury vs control
 ```
 
-and analysis outputs under:
+Primary outcome:
 
 ```text
-results/
-└── figures/
+approach_distance
 ```
 
-The coordinate table in `tracks.csv` will represent the ground-truth tracks.
+Required analyses:
 
-The initial project will not attempt to recover tracks from the TIFF movie through segmentation or automated tracking.
+- two-sided permutation test,
+- Hedges' g,
+- percentile bootstrap confidence interval.
 
-Detailed rendering parameters for `synthetic_movie.tif` will be specified separately before TIFF generation is implemented.
-
-
-## Initial Scope
-
-The first project version will include:
-
-- synthetic cell-track generation,
-- synthetic microscopy-style TIFF generation,
-- deterministic migration metrics,
-- distance-to-sinusoid analysis,
-- automated tests,
-- control-versus-injury comparisons,
-- trajectory visualization,
-- basic quality-control plots, and
-- AI-assisted implementation with human review.
-
-The first version will not include:
-
-- real biological data,
-- patient data,
-- image segmentation,
-- automated object detection,
-- automated cell tracking,
-- deep learning,
-- LangGraph,
-- LLM-based scientific classification, or
-- autonomous biological interpretation.
+The analysis must not redefine responders or subsets using the same outcome and then test that same outcome as confirmatory evidence.
 
 
-## Scientific Responsibility
+## 8. Synthetic TIFF Specification Boundary
 
-The researcher is responsible for:
+Synthetic TIFF output may be generated from the ground-truth trajectories.
 
-- defining the scientific question,
-- selecting metrics,
-- defining thresholds,
-- defining simulation parameters,
-- validating calculations,
-- deciding whether outputs are scientifically meaningful, and
-- interpreting the results.
+The coordinate table remains the authoritative source for analysis.
 
-The coding assistant may help with:
-
-- implementation,
-- test design,
-- debugging,
-- refactoring,
-- code organization,
-- documentation, and
-- identification of possible edge cases.
-
-The coding assistant must not silently modify scientific definitions.
+The TIFF is not used for segmentation, object detection, or track recovery in the current project.
 
 
-## Design Principle
+## 9. Sequence-Modeling Dataset
 
-The intended workflow is:
+The approved sequence-modeling extension uses a separate synthetic dataset:
 
 ```text
-Scientific question
-        ↓
-Human-defined specification
-        ↓
-AI-assisted implementation
-        ↓
-Deterministic Python calculations
-        ↓
-Automated tests
-        ↓
-Human validation
-        ↓
-Interpretation
+2,000 control trajectories
+2,000 injury trajectories
+4,000 total trajectories
+30 frames per trajectory
 ```
 
-The LLM is therefore used as a coding and review assistant rather than as the scientific analysis engine.
+The simulator logic remains unchanged.
+
+The deep-learning generation seed is:
+
+```text
+DL_SEED = 2026
+```
+
+
+## 10. Sequence Representation
+
+Each 30-frame trajectory is converted into 29 transitions.
+
+Canonical input shape:
+
+```text
+(N, 29, 3)
+```
+
+Channel order:
+
+```text
+[dx, dy, relative_x]
+```
+
+Definitions:
+
+```text
+dx_t         = x_(t+1) - x_t
+dy_t         = y_(t+1) - y_t
+relative_x_t = (x_t - 100) / 100
+```
+
+`relative_x_t` uses the pre-step position `x_t`.
+
+Class labels:
+
+```text
+control = 0
+injury  = 1
+```
+
+
+## 11. Fixed Train / Validation / Test Split
+
+Split seed:
+
+```text
+DL_SPLIT_SEED = 2027
+```
+
+Persisted split:
+
+```text
+data/dl_split.csv
+```
+
+Track-level stratified split:
+
+| Split | Control | Injury | Total |
+|---|---:|---:|---:|
+| Train | 1400 | 1400 | 2800 |
+| Validation | 300 | 300 | 600 |
+| Test | 300 | 300 | 600 |
+
+All frames from one trajectory must remain in the same split.
+
+The persisted split must not be regenerated or reshuffled for the completed comparison.
+
+
+## 12. Logistic Regression Baseline Specification
+
+Input:
+
+```text
+(N, 29, 3)
+→ flatten in C-order
+→ 87 features
+```
+
+Preprocessing:
+
+```text
+StandardScaler
+fit on training split only
+```
+
+Model:
+
+```text
+LogisticRegression(
+    solver="lbfgs",
+    l1_ratio=0,
+    C=1.0,
+    max_iter=1000,
+    random_state=2028,
+)
+```
+
+No handcrafted interaction features are included in this baseline.
+
+
+## 13. TensorFlow 1D CNN Specification
+
+Input:
+
+```text
+(N, 29, 3)
+```
+
+Per-channel scaling:
+
+```text
+reshape training data to (-1, 3)
+compute one mean and one population standard deviation per channel
+fit on training split only
+zero standard deviation → 1.0
+```
+
+Architecture:
+
+```text
+Input (29, 3)
+→ Conv1D(16, kernel_size=3, padding="same", activation="relu")
+→ Conv1D(16, kernel_size=3, padding="same", activation="relu")
+→ GlobalAveragePooling1D
+→ Dense(1, activation="sigmoid")
+```
+
+Training configuration:
+
+```text
+optimizer = Adam
+learning_rate = 1e-3
+loss = binary crossentropy
+batch_size = 32
+epochs = 30
+decision_threshold = 0.5
+random_state = 2029
+```
+
+No early stopping or validation-driven hyperparameter adaptation is used.
+
+
+## 14. PyTorch 1D CNN Specification
+
+Canonical external input:
+
+```text
+(N, 29, 3)
+```
+
+Internal Conv1d layout:
+
+```text
+(N, 3, 29)
+```
+
+Per-channel scaling follows the same train-only rule as the TensorFlow model.
+
+Architecture:
+
+```text
+Conv1d(3, 16, kernel_size=3, padding=1)
+→ ReLU
+→ Conv1d(16, 16, kernel_size=3, padding=1)
+→ ReLU
+→ mean over time dimension
+→ Linear(16, 1)
+```
+
+Training configuration:
+
+```text
+optimizer = Adam
+learning_rate = 1e-3
+loss = BCEWithLogitsLoss
+batch_size = 32
+epochs = 30
+decision_threshold = 0.5
+random_state = 2030
+device = CPU
+```
+
+Sigmoid is applied only when converting logits to probabilities.
+
+
+## 15. Final Evaluation Protocol
+
+The three model configurations are frozen before final test evaluation.
+
+Final fitting rules:
+
+- use the original training split only,
+- fit preprocessing on training data only,
+- do not combine train and validation,
+- do not modify architecture or hyperparameters after seeing test results,
+- evaluate each model on the same held-out test split.
+
+Final metrics:
+
+- accuracy,
+- precision,
+- recall,
+- F1,
+- ROC-AUC.
+
+Final output:
+
+```text
+results/dl/final_test_comparison.csv
+```
+
+Pre-test implementation checkpoint:
+
+```text
+b26f0c1  Add final test comparison pipeline
+```
+
+The held-out test result is treated as final for this experiment.
+
+Any later change to preprocessing, architecture, thresholds, epochs, features, or training data must be treated as a separate experiment.
+
+
+## 16. Interpretation Constraints
+
+The project supports interpretation only within the synthetic task.
+
+Permitted interpretation:
+
+- recovery of a deliberately encoded migration signal,
+- held-out generalization within the synthetic data-generating process,
+- comparison of fixed model representations under the same task.
+
+Not permitted:
+
+- biological discovery,
+- clinical inference,
+- biological validation of the simulator,
+- claims about real intravital microscopy performance,
+- universal claims about model-family superiority.

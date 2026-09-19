@@ -1,408 +1,99 @@
 # Claude Code Project Instructions
 
-## Project Purpose
+## Purpose
 
-This repository contains a small synthetic intravital imaging analysis project.
+This repository contains a reproducible synthetic intravital cell-motility analysis project.
 
-The project has two goals:
+Claude Code may assist with implementation, testing, debugging, refactoring, documentation, and code review.
 
-1. to implement a reproducible and deterministic cell-migration analysis workflow, and
-2. to demonstrate a controlled AI-assisted coding workflow.
+Scientific and evaluation decisions remain researcher-defined.
 
-The authoritative scientific specification is defined in:
+Read `PROJECT_SPEC.md` before modifying scientific analysis logic.
 
-```text
-PROJECT_SPEC.md
-```
-
-Read `PROJECT_SPEC.md` before proposing or implementing scientific analysis code.
-
----
-
-## Core Principle
-
-Scientific decisions remain human-defined.
-
-Claude Code may assist with:
-
-- implementation,
-- testing,
-- debugging,
-- refactoring,
-- code organization,
-- documentation, and
-- identification of edge cases.
-
-Claude Code must not independently redefine:
-
-- the scientific question,
-- metric definitions,
-- analysis thresholds,
-- simulation assumptions,
-- expected biological interpretation, or
-- project scope.
-
-If a scientific rule is missing or ambiguous, identify the ambiguity rather than silently choosing a value.
-
----
-
-## Current Scientific Question
-
-The project asks:
-
-> Do cells in an injury condition show stronger migration toward a simulated sinusoid than cells in a control condition?
-
-This is a synthetic analysis exercise.
-
-The generated results must not be described as experimental biological evidence.
-
----
-
-## Fixed Experimental Parameters
-
-Unless explicitly changed by the researcher, use:
-
-```text
-conditions              = control, injury
-cells_per_condition     = 15
-frames_per_cell         = 30
-frame_interval_min      = 1
-field_width_um          = 200
-field_height_um         = 200
-pixel_size_um           = 1
-sinusoid_x_um           = 100
-random_seed             = 42
-arrest_threshold_um_min = 2.0
-```
-
-Do not change these values simply to improve an output, test result, visualization, or apparent group difference.
-
----
-
-## Synthetic Movement Rules
-
-The synthetic movement model is defined by the researcher and must not be modified without explicit approval.
-
-### Initial Cell Positions
-
-Initial positions are sampled independently for each cell from:
-
-```text
-x_initial ~ Uniform(0, 200 µm)
-y_initial ~ Uniform(0, 200 µm)
-```
-
-The same initialization rule must be used for both the control and injury conditions.
-
-Do not introduce different starting-position distributions between conditions.
-
-### Random Movement
-
-At each frame transition, random displacement is sampled independently along the x and y axes:
-
-```text
-dx_random ~ Normal(0, 3 µm)
-dy_random ~ Normal(0, 3 µm)
-```
-
-Random-number generation must be reproducible using:
-
-```text
-random_seed = 42
-```
-
-### Control Condition
-
-Control cells use only the random displacement:
-
-```text
-dx = dx_random
-dy = dy_random
-```
-
-Do not introduce a directional bias into the control condition.
-
-### Injury Condition
-
-Injury-condition cells receive a constant directional drift toward the simulated sinusoid in addition to the random x displacement:
-
-```text
-dx_bias = 0.8 × sign(100 - x)
-
-dx = dx_random + dx_bias
-dy = dy_random
-```
-
-The directional bias magnitude is:
-
-```text
-0.8 µm/frame
-```
-
-The bias direction is determined from the current x position:
-
-```text
-x < 100 µm
-→ positive x-direction bias
-
-x > 100 µm
-→ negative x-direction bias
-
-x = 100 µm
-→ zero directional bias
-```
-
-The bias is a constant per-step drift and is not distance-dependent or speed-scaled.
-
-Do not change the bias magnitude or functional form without explicit researcher approval.
-
-### Boundary Handling
-
-The simulated field is bounded by:
-
-```text
-0 ≤ x ≤ 200 µm
-0 ≤ y ≤ 200 µm
-```
-
-Reflective boundary handling must be used when a simulated step moves a cell outside the field.
-
-Do not replace reflective boundaries with clipping, track termination, wrapping, or another boundary rule unless explicitly approved.
-
----
-
-## Deterministic Analysis Requirements
-
-The following quantities must be calculated using explicit deterministic Python functions:
-
-- step distance,
-- step speed,
-- mean speed,
-- path length,
-- displacement,
-- persistence,
-- arrest coefficient,
-- distance to sinusoid, and
-- approach distance.
-
-Do not use an LLM call to calculate, classify, estimate, or replace these metrics.
-
-The definitions in `PROJECT_SPEC.md` are authoritative.
-
----
 
 ## Scientific Boundaries
 
-Do not add any of the following unless explicitly requested:
+Do not independently change:
 
-- real biological datasets,
-- patient data,
-- image segmentation,
-- automated object detection,
-- automated cell tracking,
-- deep-learning models,
-- LangGraph,
-- LLM-based cell classification,
-- autonomous biological interpretation,
-- external APIs, or
-- unnecessary infrastructure.
+- the scientific question,
+- simulation assumptions,
+- metric definitions,
+- statistical methods,
+- data-split rules,
+- model configurations,
+- interpretation boundaries.
 
-Keep the initial implementation intentionally small.
+If a scientific requirement is ambiguous, report the ambiguity rather than choosing a value silently.
 
----
+This project uses synthetic data. Results must not be described as biological or clinical evidence.
 
-## Synthetic TIFF Scope
 
-The project is expected eventually to generate:
+## Reproducibility
 
-```text
-data/synthetic_movie.tif
-```
+Preserve deterministic and reproducible behavior.
 
-However, detailed TIFF-rendering parameters such as cell appearance, intensity, point-spread representation, background noise, and image noise model have not yet been scientifically specified.
+Use the existing fixed random seeds, persisted data split, and train-only preprocessing rules defined by the project.
 
-Do not invent these parameters during the initial tracking-data implementation.
+Do not regenerate or reshuffle the final train/validation/test split unless explicitly requested as a new experiment.
 
-The first implementation stage should focus on synthetic coordinate-track generation unless explicitly instructed otherwise.
 
----
+## Frozen Final Evaluation
 
-## Data Safety
+The Logistic Regression, TensorFlow CNN, and PyTorch CNN configurations have already been frozen and evaluated on the held-out test set.
 
-The project uses synthetic data only.
+Do not modify architecture, preprocessing, thresholds, epochs, or other model settings in response to final test results.
 
-Do not introduce:
+Any future model change must be treated as a separate experiment.
 
-- patient identifiers,
-- clinical records,
-- confidential experimental data,
-- credentials,
-- API keys, or
-- secrets
+The final comparison result is stored in:
 
-into the repository.
+`results/dl/final_test_comparison.csv`
 
----
 
-## Project Structure
-
-Preserve the existing high-level structure:
-
-```text
-data/
-    Synthetic input data
-
-src/
-    Python source code
-
-tests/
-    Deterministic tests
-
-results/
-    Generated analysis outputs
-
-results/figures/
-    Generated figures
-```
-
-Do not create new top-level directories unless there is a clear reason.
-
----
-
-## Python Environment
-
-The project uses:
-
-```text
-Python 3.12
-uv
-```
-
-Current scientific dependencies include:
-
-- NumPy,
-- Pandas,
-- Matplotlib,
-- SciPy, and
-- tifffile.
-
-Testing uses:
-
-- pytest.
-
-Use `uv` for dependency management.
-
-Do not introduce another environment or dependency-management system.
-
----
-
-## Implementation Style
+## Implementation and Testing
 
 Prefer:
 
-- small functions,
-- descriptive names,
+- small, testable functions,
 - explicit parameters,
-- type hints where useful,
 - deterministic behavior,
-- reproducible random-number generation,
-- simple control flow,
-- separation of simulation and analysis logic, and
-- code that can be tested independently.
+- minimal changes,
+- separation of simulation, analysis, and modeling logic.
 
-Avoid:
+When changing scientific or modeling logic:
 
-- unnecessary abstractions,
-- premature frameworks,
-- hidden scientific assumptions, and
-- overly complex architecture for this mini-project.
+1. explain the proposed change,
+2. identify whether it affects the scientific specification,
+3. update or add tests,
+4. run relevant tests,
+5. report changed files and test results.
 
----
+Do not change a scientific definition merely to make a test pass.
 
-## Testing Requirements
-
-Scientific calculations and simulation rules should be independently testable.
-
-When implementing or modifying scientific logic:
-
-1. identify relevant edge cases,
-2. construct small test cases with manually verifiable expected values where possible,
-3. implement or update the tests,
-4. run the relevant tests, and
-5. report the result.
-
-Tests for the synthetic movement model should verify, where appropriate:
-
-- reproducibility with random seed `42`,
-- the expected number of tracks and observations,
-- valid coordinate boundaries,
-- identical initialization rules across conditions,
-- absence of directional bias in control cells,
-- correct direction of the injury bias,
-- zero injury bias at `x = 100 µm`, and
-- reflective boundary behavior.
-
-Do not modify a scientific definition merely to make a test pass.
-
-If a test reveals a conflict between the implementation and `PROJECT_SPEC.md`, report the inconsistency.
-
----
-
-## Change Discipline
-
-Before changing an existing scientific calculation or simulation rule:
-
-1. describe the proposed change,
-2. explain why it is needed,
-3. identify whether it changes the scientific specification, and
-4. obtain researcher approval if the specification would change.
-
-Implementation improvements that preserve the scientific definition may be proposed normally.
-
-Scientific-definition changes require explicit approval.
-
----
 
 ## Git Discipline
 
-Before making substantial changes:
+Keep changes focused.
 
-- inspect the existing repository,
-- keep modifications focused on the requested task, and
-- avoid unrelated cleanup.
+Do not rewrite Git history, force-push, delete branches, or modify Git configuration unless explicitly requested.
 
-After implementation:
+Preserve the distinction between frozen pre-test code and post-test results.
 
-- summarize which files were changed,
-- explain why they were changed, and
-- report the tests that were run.
 
-Do not:
+## Current Project Status
 
-- rewrite Git history,
-- force-push,
-- delete branches, or
-- modify Git configuration
+The core analysis and modeling workflow is complete.
 
-unless explicitly requested.
+Current work should focus primarily on:
 
----
+- documentation,
+- reproducibility,
+- repository cleanup,
+- portfolio presentation.
 
-## Current Development Stage
+For future work, read:
 
-The project has completed the initial scientific specification stage.
+1. `CLAUDE.md`
+2. `PROJECT_SPEC.md`
 
-The next development step is planning the implementation of synthetic tracking-data generation.
-
-For the next Claude Code interaction:
-
-1. read `CLAUDE.md`,
-2. read `PROJECT_SPEC.md`,
-3. inspect the existing repository,
-4. prepare a minimal implementation plan for synthetic tracking-data generation,
-5. identify any remaining ambiguity that would block implementation, and
-6. do not modify files until explicitly instructed.
-
-The initial implementation should focus on generating deterministic and reproducible synthetic coordinate tracks.
-
-Do not implement the TIFF-generation stage yet.
+before making substantial changes.

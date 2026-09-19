@@ -1,6 +1,7 @@
 [project]
 name = "intravital-mini-analysis"
 version = "0.1.0"
+description = "Reproducible synthetic intravital cell-motility analysis with classical statistics and sequence-modeling baselines."
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.11.1",
