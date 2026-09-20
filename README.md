@@ -1,6 +1,6 @@
 # Intravital Cell Motility Analysis
 
-A reproducible synthetic-analysis project for studying directed cell migration toward a simulated sinusoid, with classical trajectory statistics and sequence-based machine-learning baselines.
+A reproducible synthetic-analysis project for studying directed cell migration toward a simulated sinusoid, with classical trajectory statistics and sequence-based machine-learning models.
 
 ## Overview
 
@@ -129,7 +129,7 @@ All frames from one track remain in the same split.
 
 ## Models
 
-Three frozen baselines were compared.
+Three frozen models were compared: a flattened Logistic Regression baseline and two sequence-aware 1D CNNs implemented in TensorFlow and PyTorch.
 
 ### Logistic Regression
 
